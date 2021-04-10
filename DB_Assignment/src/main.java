@@ -2,13 +2,15 @@ import java.sql.*;
 import java.util.Vector;
 import java.io.*;
 
+//12141508 컴퓨터 공학과 김성원
+
 public class main {
 
 	public static void query_run(String query, Statement statement) {
 		try {
 			statement.executeQuery(query);
 		} catch (SQLException e) {
-			//System.out.println(e.getLocalizedMessage());
+			// System.out.println(e.getLocalizedMessage());
 		}
 	}
 
@@ -20,7 +22,7 @@ public class main {
 			temp_result = statement.executeQuery(query);
 			return temp_result;
 		} catch (SQLException e) {
-			//System.out.println(e.getLocalizedMessage());
+			// System.out.println(e.getLocalizedMessage());
 			return null;
 		}
 	}
@@ -46,7 +48,7 @@ public class main {
 			}
 			System.out.println();
 		} catch (SQLException e) {
-		//	System.out.println(e.getLocalizedMessage());
+			// System.out.println(e.getLocalizedMessage());
 		}
 
 	}
@@ -59,10 +61,35 @@ public class main {
 			result.next();
 			return result.getInt(1);
 		} catch (SQLException e) {
-			//System.out.println(e.getLocalizedMessage());
+			// System.out.println(e.getLocalizedMessage());
 		}
 		return 0;
 	}
+
+	public static void init_process(ResultSet result, Statement statement) {
+		result = query_run_and_show(
+				"SELECT * FROM pg_catalog.pg_tables WHERE schemaname != \'pg_catalog\' AND schemaname != \'information_schema\';",
+				statement);
+		Vector<String> string_vector = new Vector<String>();
+		try {
+			while (result.next()) {
+				string_vector.add(result.getString(2));
+			}
+		} catch (SQLException e) {
+			System.out.println(e.getLocalizedMessage());
+		}
+
+		if (string_vector.size() == 0) {
+			System.out.println("There is no table!");
+			return;
+		} else {
+
+			for (int i = 0; i < string_vector.size(); i++) {
+				query_run_and_show("DROP TABLE " + string_vector.elementAt(i) + " CASCADE;", statement);
+			}
+			System.out.println("Initialized!");
+		}
+	}// 초기화 함수
 
 	public static void main(String[] args) throws Exception {
 
@@ -99,25 +126,16 @@ public class main {
 		////////// write your code on this ////////////
 		/////////////////////////////////////////////////////
 
-		String query;
+		System.out.println("\n\n=============My code=============\n\n");
+
+		String query; // 쿼리를 담을 변수
 		Statement statement = connection.createStatement();
-		ResultSet result;
+		ResultSet result = null; // 결과를 받을 변수
 
 		// Process 1
-		query_run("DROP TABLE movieGenre", statement);
-		query_run("DROP TABLE movieObtain", statement);
-		query_run("DROP TABLE actorObtain", statement);
-		query_run("DROP TABLE directorObtain", statement);
-		query_run("DROP TABLE casting", statement);
-		query_run("DROP TABLE make", statement);
-		query_run("DROP TABLE customerRate", statement);
-		query_run("DROP TABLE director", statement);
-		query_run("DROP TABLE actor", statement);
-		query_run("DROP TABLE movie", statement);
-		query_run("DROP TABLE award", statement);
-		query_run("DROP TABLE genre", statement);
-		query_run("DROP TABLE customer", statement);
-		System.out.println("Initialized!");
+
+		init_process(result, statement);
+
 		// Init Success!
 
 		// Create table
@@ -159,7 +177,7 @@ public class main {
 		System.out.println("Table created!");
 		// Create table Success!
 
-		// trigger
+		// trigger for avgRate
 
 		query_run("CREATE OR REPLACE FUNCTION avg_rate_func() RETURNS TRIGGER AS $$ " + "DECLARE rate_count INTEGER; "
 				+ "BEGIN "
@@ -169,8 +187,6 @@ public class main {
 
 		query_run("CREATE TRIGGER cal_avg_rate AFTER INSERT OR UPDATE ON customerRate FOR EACH ROW "
 				+ "EXECUTE PROCEDURE avg_rate_func();", statement);
-
-		//
 
 		// Data insert
 
@@ -226,7 +242,7 @@ public class main {
 		// Data insert Success!
 
 		// Process 2
-		System.out.println("===Queries Start===\n");
+		System.out.println("===Process two Start===\n");
 		int actorID = 0, movieID = 0, directorID = 0, awardID = 0, customerID = 0;
 
 		// 2.1
@@ -318,10 +334,10 @@ public class main {
 		show_table("directorObtain", statement);
 		// Process 2 end
 
-		System.out.println();
+		System.out.println("\n===Process three Start===\n");
 
 		// Process 3 start
-		Vector<Integer> temp_vector = new Vector<Integer>();
+		Vector<Integer> temp_vector = new Vector<Integer>();// ID 담는 벡터
 		// 3.1
 		System.out.println("3.1 Ethan rates 5 to “Dunkirk”");
 		customerID = getID("customer", "Ethan", statement);
@@ -433,9 +449,10 @@ public class main {
 			}
 		}
 		System.out.println("\n");
-		
+
 		// Query 7
-		System.out.println("7. Delete the movies whose director or actor did not get any award and delete data from related tables.");
+		System.out.println(
+				"7. Delete the movies whose director or actor did not get any award and delete data from related tables.");
 		query = "DELETE FROM movie WHERE movieID NOT IN (SELECT DISTINCT movieID FROM movie NATURAL JOIN casting NATURAL JOIN make WHERE actorID IN (SELECT DISTINCT actorID FROM actorObtain) AND directorID IN (SELECT DISTINCT directorID FROM directorObtain));";
 		result = query_run_and_show(query, statement);
 		show_table("movie", statement);
@@ -444,32 +461,22 @@ public class main {
 		show_table("casting", statement);
 		show_table("make", statement);
 		show_table("customerRate", statement);
-		
-		//Query 8
+
+		// Query 8
 		System.out.println("8. Delete all customers and delete data from related tables.");
 		query = "DELETE FROM customer;";
 		query_run_and_show(query, statement);
-		show_table("customer",statement);
-		show_table("customerRate",statement);
-		
-		//Query 9
+		show_table("customer", statement);
+		show_table("customerRate", statement);
+
+		// Query 9
 		System.out.println("9. Delete all tables and data (make the database empty).");
-		query_run("DROP TABLE movieGenre", statement);
-		query_run("DROP TABLE movieObtain", statement);
-		query_run("DROP TABLE actorObtain", statement);
-		query_run("DROP TABLE directorObtain", statement);
-		query_run("DROP TABLE casting", statement);
-		query_run("DROP TABLE make", statement);
-		query_run("DROP TABLE customerRate", statement);
-		query_run("DROP TABLE director", statement);
-		query_run("DROP TABLE actor", statement);
-		query_run("DROP TABLE movie", statement);
-		query_run("DROP TABLE award", statement);
-		query_run("DROP TABLE genre", statement);
-		query_run("DROP TABLE customer", statement);
+		init_process(result, statement);
 		System.out.println("Database cleared!");
 		// DROP Success!
 
 		connection.close();
 	}
 }
+
+//12141508 컴퓨터 공학과 김성원
